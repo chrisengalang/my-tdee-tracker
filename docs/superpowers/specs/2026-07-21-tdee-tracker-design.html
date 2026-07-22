@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TDEE Tracker — Design Document</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --card2: #22263a;
+    --accent: #6c63ff;
+    --accent2: #38d9a9;
+    --accent3: #ff6584;
+    --text: #e8eaf6;
+    --muted: #8b8fa8;
+    --border: #2e3250;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.6; }
+
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+  header { background: linear-gradient(135deg, #1a1d27 0%, #0f1117 100%); border-bottom: 1px solid var(--border); padding: 2.5rem 0; text-align: center; }
+  header h1 { font-size: 2.2rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+  header p { color: var(--muted); margin-top: 0.5rem; font-size: 1.05rem; }
+  .badge { display: inline-block; padding: 0.2rem 0.7rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; margin: 0.2rem; }
+  .badge-blue { background: #1e2a5e; color: #7eb3ff; }
+  .badge-green { background: #0d3b2e; color: #38d9a9; }
+  .badge-purple { background: #2a1e5e; color: #b39dff; }
+
+  /* Section headings */
+  .section { margin: 2.5rem 0; }
+  .section-title { font-size: 1.3rem; font-weight: 700; color: var(--accent2); margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem; }
+  .section-title::before { content: ''; display: block; width: 4px; height: 1.2em; background: var(--accent2); border-radius: 2px; }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem; margin-bottom: 1rem; }
+  .card h3 { font-size: 1rem; font-weight: 600; color: var(--accent); margin-bottom: 0.6rem; }
+  .card p, .card li { color: var(--muted); font-size: 0.9rem; }
+  .card ul { padding-left: 1.2rem; }
+  .card li { margin-bottom: 0.3rem; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+
+  /* Tech stack pills */
+  .stack { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .pill { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.9rem; font-size: 0.82rem; color: var(--text); display: flex; align-items: center; gap: 0.4rem; }
+  .pill-icon { font-size: 1rem; }
+
+  /* Architecture diagram */
+  .arch { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .arch-layer { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+  .arch-box { background: var(--card2); border: 1.5px solid var(--border); border-radius: 10px; padding: 0.7rem 1.2rem; font-size: 0.85rem; text-align: center; min-width: 120px; }
+  .arch-box.accent { border-color: var(--accent); color: var(--accent); }
+  .arch-box.green { border-color: var(--accent2); color: var(--accent2); }
+  .arch-box.red { border-color: var(--accent3); color: var(--accent3); }
+  .arch-arrow { color: var(--muted); font-size: 1.4rem; text-align: center; line-height: 1; margin: 0.3rem 0; }
+
+  /* Data model table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: var(--card2); color: var(--accent); text-align: left; padding: 0.6rem 0.8rem; border-bottom: 2px solid var(--border); }
+  td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); color: var(--muted); }
+  td:first-child { color: var(--text); font-family: monospace; }
+  tr:hover td { background: rgba(108,99,255,0.05); }
+
+  /* Screen mockups */
+  .mockup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; }
+  .phone { background: #111827; border: 2px solid #374151; border-radius: 20px; padding: 0.5rem; width: 100%; max-width: 220px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .phone-screen { background: var(--card); border-radius: 14px; overflow: hidden; min-height: 380px; }
+  .phone-bar { background: var(--card2); padding: 0.5rem 0.8rem; font-size: 0.7rem; color: var(--accent); font-weight: 600; border-bottom: 1px solid var(--border); }
+  .phone-body { padding: 0.7rem; }
+  .mock-label { font-size: 0.65rem; color: var(--muted); text-align: center; margin-top: 0.5rem; }
+
+  /* Mockup components */
+  .m-card { background: var(--card2); border-radius: 8px; padding: 0.5rem 0.6rem; margin-bottom: 0.4rem; font-size: 0.68rem; border: 1px solid var(--border); }
+  .m-card .m-title { color: var(--accent2); font-weight: 600; font-size: 0.65rem; margin-bottom: 0.2rem; }
+  .m-card .m-val { color: var(--text); font-size: 0.85rem; font-weight: 700; }
+  .m-card .m-sub { color: var(--muted); font-size: 0.6rem; }
+  .m-row { display: flex; justify-content: space-between; align-items: center; }
+  .m-input { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.5rem; font-size: 0.65rem; color: var(--muted); width: 100%; margin-bottom: 0.35rem; }
+  .m-btn { background: var(--accent); color: white; border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.65rem; font-weight: 600; text-align: center; margin-top: 0.3rem; }
+  .m-btn.green { background: var(--accent2); color: #0d1b14; }
+  .m-chip { display: inline-block; background: var(--card2); border: 1px solid var(--border); border-radius: 999px; padding: 0.15rem 0.5rem; font-size: 0.58rem; color: var(--muted); margin: 0.1rem; }
+  .m-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,0.15); }
+  .m-bar-wrap { margin: 0.3rem 0; }
+  .m-bar-label { display: flex; justify-content: space-between; font-size: 0.58rem; color: var(--muted); margin-bottom: 0.15rem; }
+  .m-bar { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .m-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .m-divider { border: none; border-top: 1px solid var(--border); margin: 0.4rem 0; }
+  .m-avatar { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: white; }
+
+  /* TDEE formula box */
+  .formula { background: var(--card2); border: 1px solid var(--accent); border-radius: 10px; padding: 1rem 1.2rem; font-family: monospace; font-size: 0.82rem; color: var(--text); line-height: 2; }
+  .formula .comment { color: var(--muted); }
+  .formula .highlight { color: var(--accent2); }
+  .formula .val { color: var(--accent3); }
+
+  /* Flow steps */
+  .flow { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .flow-step { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+  .flow-step.highlight { border-color: var(--accent); color: var(--accent); }
+  .flow-sep { color: var(--muted); font-size: 1.2rem; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ TDEE Tracker</h1>
+  <p>Mobile-first web app · Multi-profile · Adaptive TDEE recalculation</p>
+  <div style="margin-top:1rem;">
+    <span class="badge badge-purple">Next.js 15 (App Router)</span>
+    <span class="badge badge-blue">Vercel Postgres</span>
+    <span class="badge badge-green">Mifflin-St Jeor</span>
+    <span class="badge badge-purple">Adaptive TDEE</span>
+    <span class="badge badge-blue">Mobile-First</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 1. TECH STACK -->
+  <div class="section">
+    <div class="section-title">Tech Stack</div>
+    <div class="stack">
+      <div class="pill"><span class="pill-icon">▲</span> Next.js 15 (App Router)</div>
+      <div class="pill"><span class="pill-icon">⚛</span> React 19</div>
+      <div class="pill"><span class="pill-icon">🎨</span> Tailwind CSS v4</div>
+      <div class="pill"><span class="pill-icon">🗄</span> Vercel Postgres (neon)</div>
+      <div class="pill"><span class="pill-icon">🔷</span> Drizzle ORM</div>
+      <div class="pill"><span class="pill-icon">🔐</span> NextAuth.js v5</div>
+      <div class="pill"><span class="pill-icon">✅</span> Zod validation</div>
+      <div class="pill"><span class="pill-icon">📊</span> Recharts</div>
+      <div class="pill"><span class="pill-icon">▲</span> Vercel (deploy)</div>
+    </div>
+  </div>
+
+  <!-- 2. ARCHITECTURE -->
+  <div class="section">
+    <div class="section-title">Architecture</div>
+    <div class="card">
+      <div class="arch">
+        <div class="arch-layer">
+          <div class="arch-box accent">Browser (Mobile-First UI)</div>
+        </div>
+        <div class="arch-arrow">↕</div>
+        <div class="arch-layer">
+          <div class="arch-box green">Next.js App Router<br/><small style="color:var(--muted)">Pages + Server Components</small></div>
+          <div class="arch-box green">API Routes<br/><small style="color:var(--muted)">/api/* (Route Handlers)</small></div>
+        </div>
+        <div class="arch-arrow">↕</div>
+        <div class="arch-layer">
+          <div class="arch-box">Drizzle ORM</div>
+          <div class="arch-box">NextAuth.js v5<br/><small style="color:var(--muted)">Session / Auth</small></div>
+          <div class="arch-box">TDEE Engine<br/><small style="color:var(--muted)">Pure TS functions</small></div>
+        </div>
+        <div class="arch-arrow">↕</div>
+        <div class="arch-layer">
+          <div class="arch-box red">Vercel Postgres (Neon)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. SCREEN MOCKUPS -->
+  <div class="section">
+    <div class="section-title">Screen Mockups</div>
+    <div class="mockup-grid">
+
+      <!-- Dashboard -->
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-bar">📊 Dashboard</div>
+            <div class="phone-body">
+              <div style="display:flex;gap:0.3rem;margin-bottom:0.5rem;">
+                <div class="m-chip active">Alice</div>
+                <div class="m-chip">Bob</div>
+                <div class="m-chip">+ Add</div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">CURRENT TDEE</div>
+                <div class="m-val">2,340 <span style="font-size:0.6rem;color:var(--muted)">kcal/day</span></div>
+                <div class="m-sub">↑ Recalculated 3 days ago</div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">TODAY'S INTAKE</div>
+                <div class="m-row">
+                  <div class="m-val">1,820</div>
+                  <div style="color:var(--accent2);font-size:0.65rem;">−520 deficit</div>
+                </div>
+                <div class="m-bar-wrap">
+                  <div class="m-bar-label"><span>0</span><span>2,340</span></div>
+                  <div class="m-bar"><div class="m-bar-fill" style="width:78%"></div></div>
+                </div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">WEIGHT TREND (7d)</div>
+                <div class="m-row">
+                  <div class="m-val">182.4 <span style="font-size:0.6rem;color:var(--muted)">lbs</span></div>
+                  <div style="color:var(--accent2);font-size:0.65rem;">↓ −1.2 lbs</div>
+                </div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">AVG CALORIES (28d)</div>
+                <div class="m-val">1,950 <span style="font-size:0.6rem;color:var(--muted)">kcal</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-label">Dashboard</div>
+      </div>
+
+      <!-- Log Entry -->
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-bar">✏️ Log Today</div>
+            <div class="phone-body">
+              <div class="m-card" style="margin-bottom:0.6rem;">
+                <div class="m-title">DATE</div>
+                <div class="m-input" style="display:block;">Mon, Jul 21 2026</div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">CALORIES CONSUMED</div>
+                <input class="m-input" style="display:block;" value="1820" readonly />
+                <div class="m-sub">kcal</div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">WEIGHT (optional)</div>
+                <input class="m-input" style="display:block;" value="182.4" readonly />
+                <div class="m-sub">lbs — skip if not measured today</div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">NOTES (optional)</div>
+                <input class="m-input" style="display:block;" value="Rest day" readonly />
+              </div>
+              <hr class="m-divider" />
+              <div class="m-btn green">Save Log Entry</div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-label">Daily Log Entry</div>
+      </div>
+
+      <!-- Profile Setup -->
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-bar">👤 Profile Setup</div>
+            <div class="phone-body">
+              <div class="m-card">
+                <div class="m-title">NAME</div>
+                <input class="m-input" style="display:block;" value="Alice" readonly />
+              </div>
+              <div class="m-card">
+                <div class="m-title">SEX</div>
+                <div style="display:flex;gap:0.3rem;margin-top:0.2rem;">
+                  <div class="m-chip active">Female</div>
+                  <div class="m-chip">Male</div>
+                </div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">AGE / HEIGHT / WEIGHT</div>
+                <input class="m-input" style="display:block;" value="28 years" readonly />
+                <input class="m-input" style="display:block;" value="5′ 6″ (167 cm)" readonly />
+                <input class="m-input" style="display:block;" value="183 lbs (83 kg)" readonly />
+              </div>
+              <div class="m-card">
+                <div class="m-title">ACTIVITY LEVEL</div>
+                <div style="font-size:0.62rem;color:var(--muted);margin-top:0.2rem;">
+                  <div class="m-chip">Sedentary ×1.2</div>
+                  <div class="m-chip active">Light ×1.375</div>
+                  <div class="m-chip">Moderate ×1.55</div>
+                  <div class="m-chip">Active ×1.725</div>
+                </div>
+              </div>
+              <div class="m-card">
+                <div class="m-title">INITIAL TDEE (calculated)</div>
+                <div class="m-val">2,180 <span style="font-size:0.6rem;color:var(--muted)">kcal/day</span></div>
+              </div>
+              <div class="m-btn">Save Profile</div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-label">Profile Setup</div>
+      </div>
+
+      <!-- History / Chart -->
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-bar">📈 History</div>
+            <div class="phone-body">
+              <div style="display:flex;gap:0.3rem;margin-bottom:0.5rem;">
+                <div class="m-chip active">28d</div>
+                <div class="m-chip">14d</div>
+                <div class="m-chip">7d</div>
+                <div class="m-chip">All</div>
+              </div>
+              <!-- Fake chart area -->
+              <div style="background:var(--card2);border-radius:8px;padding:0.5rem;margin-bottom:0.4rem;border:1px solid var(--border);">
+                <div style="font-size:0.6rem;color:var(--muted);margin-bottom:0.3rem;">Weight (lbs)</div>
+                <svg viewBox="0 0 180 60" style="width:100%;display:block;">
+                  <polyline points="0,50 20,48 40,45 60,44 80,41 100,38 120,36 140,34 160,32 180,30"
+                    fill="none" stroke="#6c63ff" stroke-width="2" stroke-linecap="round"/>
+                  <polyline points="0,50 20,48 40,45 60,44 80,41 100,38 120,36 140,34 160,32 180,30"
+                    fill="url(#g)" opacity="0.2"/>
+                  <defs>
+                    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#6c63ff"/>
+                      <stop offset="100%" stop-color="transparent"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+              <div style="background:var(--card2);border-radius:8px;padding:0.5rem;border:1px solid var(--border);">
+                <div style="font-size:0.6rem;color:var(--muted);margin-bottom:0.3rem;">Calories vs TDEE</div>
+                <svg viewBox="0 0 180 60" style="width:100%;display:block;">
+                  <line x1="0" y1="30" x2="180" y2="30" stroke="#38d9a9" stroke-width="1" stroke-dasharray="4"/>
+                  <polyline points="0,40 20,35 40,45 60,30 80,38 100,28 120,42 140,33 160,36 180,31"
+                    fill="none" stroke="#ff6584" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <div style="display:flex;gap:0.8rem;font-size:0.55rem;color:var(--muted);margin-top:0.2rem;">
+                  <span style="color:var(--accent2)">— TDEE</span>
+                  <span style="color:var(--accent3)">— Intake</span>
+                </div>
+              </div>
+              <div class="m-card" style="margin-top:0.4rem;">
+                <div class="m-title">ADAPTIVE TDEE</div>
+                <div class="m-val">2,340 <span style="font-size:0.6rem;color:var(--muted)">kcal</span></div>
+                <div class="m-sub">Based on last 28 days · ↑+160 from initial</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-label">History & Charts</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. DATA MODEL -->
+  <div class="section">
+    <div class="section-title">Database Schema</div>
+    <div class="card-grid">
+
+      <div class="card">
+        <h3>users</h3>
+        <table>
+          <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>uuid PK</td><td>auto</td></tr>
+            <tr><td>email</td><td>text</td><td>unique, login</td></tr>
+            <tr><td>name</td><td>text</td><td>display name</td></tr>
+            <tr><td>created_at</td><td>timestamp</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>profiles</h3>
+        <table>
+          <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>uuid PK</td><td></td></tr>
+            <tr><td>user_id</td><td>uuid FK</td><td>→ users</td></tr>
+            <tr><td>name</td><td>text</td><td>profile name</td></tr>
+            <tr><td>sex</td><td>enum</td><td>male/female</td></tr>
+            <tr><td>age</td><td>int</td><td>years</td></tr>
+            <tr><td>height_cm</td><td>numeric</td><td></td></tr>
+            <tr><td>weight_kg</td><td>numeric</td><td>starting weight</td></tr>
+            <tr><td>activity_level</td><td>enum</td><td>sedentary…very_active</td></tr>
+            <tr><td>initial_tdee</td><td>numeric</td><td>Mifflin-St Jeor result</td></tr>
+            <tr><td>adaptive_tdee</td><td>numeric</td><td>recalculated, nullable</td></tr>
+            <tr><td>tdee_window_days</td><td>int</td><td>default 28</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>daily_logs</h3>
+        <table>
+          <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>id</td><td>uuid PK</td><td></td></tr>
+            <tr><td>profile_id</td><td>uuid FK</td><td>→ profiles</td></tr>
+            <tr><td>log_date</td><td>date</td><td>unique per profile</td></tr>
+            <tr><td>calories_kcal</td><td>numeric</td><td>required</td></tr>
+            <tr><td>weight_kg</td><td>numeric</td><td>nullable</td></tr>
+            <tr><td>notes</td><td>text</td><td>optional</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 5. TDEE FORMULAS -->
+  <div class="section">
+    <div class="section-title">TDEE Calculation Logic</div>
+    <div class="card">
+      <h3 style="margin-bottom:0.8rem;">Initial TDEE — Mifflin-St Jeor + Activity Multiplier</h3>
+      <div class="formula">
+        <span class="comment">// BMR (kcal/day)</span><br/>
+        <span class="highlight">if</span> male:   BMR = <span class="val">10</span> × weight_kg + <span class="val">6.25</span> × height_cm − <span class="val">5</span> × age + <span class="val">5</span><br/>
+        <span class="highlight">if</span> female: BMR = <span class="val">10</span> × weight_kg + <span class="val">6.25</span> × height_cm − <span class="val">5</span> × age − <span class="val">161</span><br/><br/>
+        <span class="comment">// Activity multiplier</span><br/>
+        sedentary=<span class="val">1.2</span>  light=<span class="val">1.375</span>  moderate=<span class="val">1.55</span>  active=<span class="val">1.725</span>  very_active=<span class="val">1.9</span><br/><br/>
+        <span class="highlight">initial_tdee</span> = BMR × multiplier
+      </div>
+    </div>
+    <div class="card" style="margin-top:1rem;">
+      <h3 style="margin-bottom:0.8rem;">Adaptive TDEE — Rolling Window Recalculation</h3>
+      <div class="formula">
+        <span class="comment">// Requires ≥14 days of logs in the window (default 28 days)</span><br/>
+        avg_calories = mean(calories_kcal) <span class="comment">// over window</span><br/>
+        avg_weight_change_kg = (last_weight − first_weight) / window_weeks<br/><br/>
+        <span class="comment">// 1 kg body mass ≈ 7700 kcal surplus/deficit</span><br/>
+        weekly_surplus_deficit = avg_weight_change_kg × <span class="val">7700</span><br/>
+        daily_surplus_deficit  = weekly_surplus_deficit / <span class="val">7</span><br/><br/>
+        <span class="highlight">adaptive_tdee</span> = avg_calories − daily_surplus_deficit
+      </div>
+      <p style="margin-top:0.8rem;font-size:0.82rem;">
+        <strong style="color:var(--accent2)">Example:</strong> avg 1,800 kcal/day, lost 0.5 kg/week → deficit = 550 kcal/day → adaptive TDEE = 1,800 + 550 = <strong>2,350 kcal</strong>
+      </p>
+    </div>
+  </div>
+
+  <!-- 6. USER FLOW -->
+  <div class="section">
+    <div class="section-title">User Flow</div>
+    <div class="card">
+      <h3 style="margin-bottom:0.8rem;">Onboarding</h3>
+      <div class="flow">
+        <div class="flow-step highlight">Sign Up / Login</div>
+        <div class="flow-sep">→</div>
+        <div class="flow-step">Create Profile</div>
+        <div class="flow-sep">→</div>
+        <div class="flow-step">Enter biometrics</div>
+        <div class="flow-sep">→</div>
+        <div class="flow-step highlight">Initial TDEE calculated</div>
+        <div class="flow-sep">→</div>
+        <div class="flow-step">Dashboard</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:0.8rem;">
+      <h3 style="margin-bottom:0.8rem;">Daily Loop</h3>
+      <div class="flow">
+        <div class="flow-step highlight">Open App</div>
+        <div class="flow-sep">→</div>
+        <div class="flow-step">Log calories</div>
+        <div class="flow-sep">→</div>
+        <div class="flow-step">Log weight (optional)</div>
+        <div class="flow-sep">→</div>
+        <div class="flow-step highlight">Adaptive TDEE recalculates</div>
+        <div class="flow-sep">→</div>
+        <div class="flow-step">View dashboard</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. FILE STRUCTURE -->
+  <div class="section">
+    <div class="section-title">Project File Structure</div>
+    <div class="card">
+      <pre style="font-size:0.8rem;color:var(--muted);line-height:1.8;overflow-x:auto;">
+<span style="color:var(--accent)">my-tracking-project/</span>
+├── <span style="color:var(--accent2)">src/</span>
+│   ├── <span style="color:var(--accent2)">app/</span>                         <span style="color:var(--border);"># Next.js App Router</span>
+│   │   ├── (auth)/login/page.tsx
+│   │   ├── (auth)/register/page.tsx
+│   │   ├── dashboard/page.tsx          <span style="color:var(--border);"># main dashboard</span>
+│   │   ├── profiles/[id]/page.tsx      <span style="color:var(--border);"># profile detail + history</span>
+│   │   ├── profiles/new/page.tsx       <span style="color:var(--border);"># create profile</span>
+│   │   ├── log/page.tsx                <span style="color:var(--border);"># daily log entry</span>
+│   │   └── api/
+│   │       ├── auth/[...nextauth]/route.ts
+│   │       ├── profiles/route.ts
+│   │       ├── profiles/[id]/route.ts
+│   │       ├── logs/route.ts
+│   │       └── logs/[id]/route.ts
+│   ├── <span style="color:var(--accent2)">lib/</span>
+│   │   ├── db/
+│   │   │   ├── schema.ts               <span style="color:var(--border);"># Drizzle schema</span>
+│   │   │   └── index.ts                <span style="color:var(--border);"># DB connection</span>
+│   │   ├── tdee.ts                     <span style="color:var(--border);"># Mifflin-St Jeor + adaptive calc</span>
+│   │   └── auth.ts                     <span style="color:var(--border);"># NextAuth config</span>
+│   └── <span style="color:var(--accent2)">components/</span>
+│       ├── ProfileSwitcher.tsx
+│       ├── DailyLogForm.tsx
+│       ├── TDEECard.tsx
+│       ├── WeightChart.tsx
+│       └── CalorieChart.tsx
+├── drizzle.config.ts
+├── next.config.ts
+└── package.json</pre>
+    </div>
+  </div>
+
+  <!-- 8. PAGES SUMMARY -->
+  <div class="section">
+    <div class="section-title">Pages &amp; Features Summary</div>
+    <div class="card-grid">
+      <div class="card">
+        <h3>🏠 Dashboard</h3>
+        <ul>
+          <li>Profile switcher (tabs/chips)</li>
+          <li>Current TDEE (initial or adaptive)</li>
+          <li>Today's calorie progress bar</li>
+          <li>Current weight + 7d trend</li>
+          <li>Quick-log shortcut</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>✏️ Daily Log</h3>
+        <ul>
+          <li>Date picker (defaults to today)</li>
+          <li>Calorie input (required)</li>
+          <li>Weight input (optional)</li>
+          <li>Notes field</li>
+          <li>Edit past entries</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>👤 Profile</h3>
+        <ul>
+          <li>Create / edit biometrics</li>
+          <li>Activity level selector</li>
+          <li>View initial TDEE</li>
+          <li>View adaptive TDEE</li>
+          <li>Adjust recalc window (14–56d)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>📈 History</h3>
+        <ul>
+          <li>Weight trend chart</li>
+          <li>Calories vs TDEE chart</li>
+          <li>Adaptive TDEE over time</li>
+          <li>Date range filter</li>
+          <li>Log history table</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:2rem 0;color:var(--muted);font-size:0.85rem;border-top:1px solid var(--border);margin-top:2rem;">
+    Design Document · TDEE Tracker · Generated 2026-07-21
+  </div>
+
+</div>
+</body>
+</html>
